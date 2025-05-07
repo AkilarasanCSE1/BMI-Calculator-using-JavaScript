@@ -1,0 +1,132 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>Health Tracker</title>
+  <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+  <style>
+    body { font-family: Arial; padding: 20px; }
+    .hidden { display: none; }
+    input, button { margin: 5px; padding: 8px; }
+  </style>
+</head>
+<body>
+
+<h2>Personal Health Tracker</h2>
+
+
+<div id="auth">
+  <h3>Login / Register</h3>
+  <input id="username" placeholder="Username" />
+  <input id="password" type="password" placeholder="Password" />
+  <button onclick="register()">Register</button>
+  <button onclick="login()">Login</button>
+</div>
+
+
+<div id="app" class="hidden">
+  <h3>Welcome, <span id="userDisplay"></span></h3>
+
+  <div>
+    <input id="weight" type="number" placeholder="Weight (kg)" />
+    <input id="height" type="number" placeholder="Height (cm)" />
+    <button onclick="calculateBMI()">Calculate BMI</button>
+  </div>
+
+  <div id="bmiResult"></div>
+  <canvas id="bmiChart" width="400" height="200"></canvas>
+  <div id="healthTips"></div>
+
+  <button onclick="logout()">Logout</button>
+</div>
+
+<script>
+  let currentUser = null;
+
+  function register() {
+    const uname = username.value;
+    const pwd = password.value;
+    if (localStorage.getItem(uname)) {
+      alert("User already exists.");
+    } else {
+      const user = { password: pwd, bmiHistory: [] };
+      localStorage.setItem(uname, JSON.stringify(user));
+      alert("User registered!");
+    }
+  }
+
+  function login() {
+    const uname = username.value;
+    const pwd = password.value;
+    const user = JSON.parse(localStorage.getItem(uname));
+    if (user && user.password === pwd) {
+      currentUser = uname;
+      document.getElementById('auth').classList.add('hidden');
+      document.getElementById('app').classList.remove('hidden');
+      document.getElementById('userDisplay').textContent = uname;
+      renderChart();
+    } else {
+      alert("Invalid login.");
+    }
+  }
+
+  function logout() {
+    currentUser = null;
+    document.getElementById('auth').classList.remove('hidden');
+    document.getElementById('app').classList.add('hidden');
+  }
+
+  function calculateBMI() {
+    const weight = parseFloat(document.getElementById('weight').value);
+    const height = parseFloat(document.getElementById('height').value) / 100;
+    if (!weight || !height) {
+      alert("Please enter valid values.");
+      return;
+    }
+    const bmi = (weight / (height * height)).toFixed(2);
+    const userData = JSON.parse(localStorage.getItem(currentUser));
+    userData.bmiHistory.push({ date: new Date().toISOString(), bmi: parseFloat(bmi) });
+    localStorage.setItem(currentUser, JSON.stringify(userData));
+    document.getElementById('bmiResult').textContent = `Your BMI: ${bmi}`;
+    showTips(bmi);
+    renderChart();
+  }
+
+  function showTips(bmi) {
+    bmi = parseFloat(bmi);
+    let tip = "";
+    if (bmi < 18.5) tip = "You're underweight. Consider a balanced diet rich in calories.";
+    else if (bmi < 24.9) tip = "You're at a healthy weight. Keep maintaining your lifestyle!";
+    else if (bmi < 29.9) tip = "You're overweight. Consider regular exercise and diet monitoring.";
+    else tip = "You're obese. Please consult a healthcare provider.";
+    document.getElementById('healthTips').textContent = "Tip: " + tip;
+  }
+
+  let chart = null;
+
+  function renderChart() {
+    const ctx = document.getElementById('bmiChart').getContext('2d');
+    const userData = JSON.parse(localStorage.getItem(currentUser));
+    const labels = userData.bmiHistory.map(entry => new Date(entry.date).toLocaleDateString());
+    const data = userData.bmiHistory.map(entry => entry.bmi);
+
+    if (chart) chart.destroy();
+    chart = new Chart(ctx, {
+      type: 'line',
+      data: {
+        labels: labels,
+        datasets: [{
+          label: 'BMI Over Time',
+          data: data,
+          fill: false,
+          borderColor: 'blue',
+          tension: 0.1
+        }]
+      }
+    });
+  }
+</script>
+
+</body>
+</html>
